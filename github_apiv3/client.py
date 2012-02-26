@@ -3,7 +3,7 @@ import UserDict
 from urllib2 import HTTPError
 import base64
 
-from github3 import request
+import request
 
 
 def _resource_factory(client, data):

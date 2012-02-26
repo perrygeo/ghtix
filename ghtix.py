@@ -27,17 +27,19 @@ for owner, project in projects:
            x['state'] != 'closed':
             issues.append(x)
 
-    if len(issues) > 0:
-        print "--------------------------------"
-        print project
-        print
+    print "--------------------------------"
+    print project
+    print
 
     for i in issues:
         if i['milestone']:
             title = i['title'] #, i['html_url']
             mtitle = i['milestone']['title']
             mdesc = i['milestone']['description']
-            mdue = None
+            duedate = "??"
             if i['milestone']['due_on']:
                 mdue = dateutil.parser.parse(i['milestone']['due_on'])
-            print "\t%s (%s due on %d-%d-%d)" % (title, mtitle, mdue.month, mdue.day, mdue.year)
+                duedate = "%d-%d-%d" % (mdue.month, mdue.day, mdue.year)
+            print "\t%s (%s due on %s)" % (title, mtitle, duedate)
+
+print "--------------------------------"
