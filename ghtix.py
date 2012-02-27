@@ -11,7 +11,7 @@ from operator import itemgetter
 
 def msg(txt, opts):
     if not opts.quiet:
-        sys.stderr.write(txt)
+        sys.stderr.write(txt + "\n")
 
 def main():
     try:

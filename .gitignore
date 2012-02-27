@@ -1,3 +1,4 @@
 _secret.py
 data.pkl
 *.pyc
+*.egg-info
