@@ -20,7 +20,7 @@ Configure with a `_secret.py` file (this is going away in favor of a config file
     password = 'secret'
     username = 'perrygeo'
     projects = [
-            ('ecotrust', 'marco-portal'),
+            ('perrygeo', 'a_test_project'),
             ('perrygeo', 'ghtix'),
     ]
     TESTING = False
