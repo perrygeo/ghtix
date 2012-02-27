@@ -128,7 +128,11 @@ def main():
 
             try:
                 mdue = dateutil.parser.parse(i['milestone']['due_on'])
-                duedate = "%d-%d-%d" % (mdue.month, mdue.day, mdue.year)
+                if opts.usedays:
+                    togo = mdue - datetime.datetime.now(utc)
+                    duedate = "%d days" % togo.days
+                else:
+                    duedate = "%d-%d-%d" % (mdue.month, mdue.day, mdue.year)
             except: 
                 duedate = ""
                 
