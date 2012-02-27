@@ -61,7 +61,7 @@ def main():
         pkl_file.close()
 
     for owner, project in projects:
-        msg("fetching %s tickets...\n" % project, opts)
+        msg("fetching %s tickets..." % project, opts)
         if len(project) > proj_width:
             proj_width = len(project)
         repo = client.Repo(c, owner, project)
