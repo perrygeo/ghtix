@@ -3,7 +3,7 @@ readme_text = file('README.md', 'rb').read()
 
 setup_args = dict(
     name                = 'ghtix',
-    version             = '0.1.1',
+    version             = '0.1.3',
     description         = 'A simple tool to summarize github issues across projects',
     author              = 'Matthew Perry',
     author_email        = 'perrygeo@gmail.com',

@@ -41,8 +41,19 @@ def main():
         password = cfg['password']
         projects = [ (x['owner'], x['name']) for x in cfg['projects'] ]
     except (IOError,):
-        print 
-        print open(os.path.join(os.path.dirname(__file__), 'template.ghtix.json')).read()  
+        print """
+# Configure your account and projects and 
+# save in your HOME directory as `~/.ghtix.json` 
+
+{
+    "username": "myusername",
+    "password": "mysupersecretpassword",
+    "projects": [
+      {"owner": "ecotrust", "name": "bioregion-discovery"},
+      {"owner": "perrygeo", "name": "ghtix"}
+    ]
+}
+"""
         sys.exit()
 
     c = client.Client(username=username, password=password)
