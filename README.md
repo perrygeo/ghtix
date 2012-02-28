@@ -46,8 +46,6 @@ Showing date delta (-d) and sorting by time (-t)
     a_test_project        17 days (Software Scoping)  #40 Data model 
     a_test_project        40 days (Define Analysis..) #7 Modeling Framework
 
-Setup is easy as py
+Setup is easy as pip 
 
-    python setup.py install 
-
-PyPi packaging on it's way
+    pip install ghtix
