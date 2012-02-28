@@ -3,7 +3,7 @@ readme_text = file('README.md', 'rb').read()
 
 setup_args = dict(
     name                = 'ghtix',
-    version             = '0.1',
+    version             = '0.1.1',
     description         = 'A simple tool to summarize github issues across projects',
     author              = 'Matthew Perry',
     author_email        = 'perrygeo@gmail.com',
@@ -13,7 +13,7 @@ setup_args = dict(
     long_description    = readme_text,
     packages            = ['github_apiv3'],
     scripts             = ['ghtix.py'],
-    #install_requires    = ['pytz>=2010'],
+    install_requires    = ['pytz>=2010'],
     classifiers         = [
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
