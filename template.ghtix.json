@@ -1,0 +1,11 @@
+# Configure your account and projects and 
+# save in your HOME directory as `~/.ghtix.json` 
+
+{
+    "username": "myusername",
+    "password": "mysupersecretpassword",
+    "projects": [
+      {"owner": "ecotrust", "name": "bioregion-discovery"},
+      {"owner": "perrygeo", "name": "ghtix"}
+    ]
+}

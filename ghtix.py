@@ -2,32 +2,18 @@
 import os
 import sys
 import optparse
+import json
 import dateutil.parser
 import datetime
 import pytz
 from github_apiv3 import client
 from operator import itemgetter
 
-
 def msg(txt, opts):
     if not opts.quiet:
         sys.stderr.write(txt + "\n")
 
 def main():
-    try:
-        from _secret import username, password
-        from _secret import projects
-    except ImportError:
-        print 
-        print open(os.path.join(os.path.dirname(__file__), 'secret.template')).read()  
-        sys.exit()
-
-    try:
-        from _secret import TESTING
-        import pickle
-    except ImportError:
-        TESTING = False
-
     utc = pytz.UTC
     farfaraway = datetime.datetime(3000,1,15,8,15,12,0, utc)
 
@@ -47,18 +33,22 @@ def main():
             action="store_true", dest="quiet", default=False)
     (opts, args) = parser.parse_args()
 
+    try:
+        jsoncfg = os.path.join(os.path.expanduser("~"), '.ghtix.json')
+        jsontxt = open(jsoncfg,'r').read()
+        cfg = json.loads(jsontxt)
+        username = cfg['username']
+        password = cfg['password']
+        projects = [ (x['owner'], x['name']) for x in cfg['projects'] ]
+    except (IOError,):
+        print 
+        print open(os.path.join(os.path.dirname(__file__), 'template.ghtix.json')).read()  
+        sys.exit()
+
     c = client.Client(username=username, password=password)
 
     issues = []
     proj_width = 0
-
-    if TESTING and os.path.exists('data.pkl'):
-        projects = []
-        pkl_file = open('data.pkl', 'rb')
-        msg("Loading pickle...", opts)
-        proj_width = 20
-        issues = pickle.load(pkl_file)
-        pkl_file.close()
 
     for owner, project in projects:
         msg("fetching %s tickets..." % project, opts)
@@ -98,12 +88,6 @@ def main():
         # sort by due date 
         issues = sorted(issues, key=itemgetter('due_sortable')) 
     
-    if TESTING and not os.path.exists('data.pkl'):
-        msg("Writing pickle..", opts)
-        output = open('data.pkl', 'wb')
-        pickle.dump(issues, output)
-        output.close()
-
     for i in issues:
         if i['empty']:
             if opts.showempty:
