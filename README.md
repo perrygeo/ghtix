@@ -15,15 +15,16 @@ multiple projects and spit out your open tickets and due dates associated with m
     -e          Show empty projects without any issues assigned
     -q          Quiet - no stderr messages, only issues list
 
-Configure with a `_secret.py` file (this is going away in favor of a config file):
+Configure with a `~/.ghtix.json` file
 
-    password = 'secret'
-    username = 'perrygeo'
-    projects = [
-            ('perrygeo', 'a_test_project'),
-            ('perrygeo', 'ghtix'),
-    ]
-    TESTING = False
+    {
+        "username": "myusername",
+        "password": "mysupersecretpassword",
+        "projects": [
+        {"owner": "ecotrust", "name": "bioregion-discovery"},
+        {"owner": "perrygeo", "name": "ghtix"}
+        ]
+    }
 
 The default behavior showing due date and sorting by project
 
@@ -42,8 +43,8 @@ Showing date delta (-d) and sorting by time (-t)
     fetching ghtix tickets...
     ghtix                 14 days (0.1 Release)       #6 Better way to configure
     ghtix                 14 days (0.1 Release)       #5 PyPi page
-    a_test_project        17 days (Software Scoping)  #7 Data model 
-    a_test_project        40 days (Define Analysis..) #40 Modeling Framework
+    a_test_project        17 days (Software Scoping)  #40 Data model 
+    a_test_project        40 days (Define Analysis..) #7 Modeling Framework
 
 Setup is easy as py
 
