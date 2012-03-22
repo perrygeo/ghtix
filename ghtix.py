@@ -8,6 +8,7 @@ import datetime
 import pytz
 from github_apiv3 import client
 from operator import itemgetter
+import re
 
 def msg(txt, opts):
     if not opts.quiet:
@@ -32,6 +33,8 @@ def main():
     parser.add_option("-q", help="Quiet - no stderr messages, only issues list",
             action="store_true", dest="quiet", default=False)
     (opts, args) = parser.parse_args()
+
+    p = re.compile("(Time: )([\d]+)( hr)")
 
     try:
         jsoncfg = os.path.join(os.path.expanduser("~"), '.ghtix.json')
@@ -76,11 +79,15 @@ def main():
                 i['project'] = project
                 i['empty'] = False
                 try:
-                    dt = dateutil.parser.parse(i['milestone']['due_on'])
-                    # d.tzinfo is not None but d.tzinfo.utcoffset(d) returns None
-                    if dt.tzinfo is None:
-                        dt = utc.localize(dt)
-                    i['due_sortable'] = dt
+                    due = i['milestone']['due_on']
+                    if due:
+                        dt = dateutil.parser.parse(due)
+                        # d.tzinfo is not None but d.tzinfo.utcoffset(d) returns None
+                        if dt.tzinfo is None:
+                            dt = utc.localize(dt)
+                        i['due_sortable'] = dt
+                    else:
+                        i['due_sortable'] = farfaraway
                 except TypeError:
                     i['due_sortable'] = farfaraway
                     
@@ -111,6 +118,17 @@ def main():
         if len(project) > 17:
             project = project[:15] + ".."
         project = "%s " % project 
+
+        # find estimated time from tags like "Time: 120 hr"
+        est_time = None
+        est_time_str = ""
+        for lbl in i['labels']:
+            lname = lbl['name']
+            match = p.findall(lname)
+            if len(match) > 0 and len(match[0]) == 3:
+                est_time = match[0][1]
+                est_time_str = "%s hrs" % est_time
+
         if i['milestone'] or opts.allissues:
             try:
                 mtitle = i['milestone']['title']
@@ -131,8 +149,8 @@ def main():
             except: 
                 duedate = ""
                 
-            print "%s %s %s#%d %s" % (project.ljust(18), 
-                    duedate.rjust(10), mtitle.ljust(20), number, title)
+            print "%s %s %s%s #%d %s" % (project.ljust(18), 
+                    duedate.rjust(10), mtitle.ljust(20), est_time_str.rjust(8), number, title)
 
 if __name__ == '__main__':
     main()
