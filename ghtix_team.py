@@ -9,6 +9,7 @@ import pytz
 from github_apiv3 import client
 from operator import itemgetter
 import re
+import urllib
 
 def msg(txt, opts):
     if not opts.quiet:
@@ -33,52 +34,32 @@ def main():
     parser.add_option("-q", help="Quiet - no stderr messages, only issues list",
             action="store_true", dest="quiet", default=False)
     (opts, args) = parser.parse_args()
+    parser.usage = "ghtix_org.py [options] organization"
 
     p = re.compile("(Time: )([\d]+)( hr)")
 
     try:
-        jsoncfg = os.path.join(os.path.expanduser("~"), '.ghtix.json')
-        jsontxt = open(jsoncfg,'r').read()
-        cfg = json.loads(jsontxt)
-        username = cfg['username']
-        password = cfg['password']
-        projects = [ (x['owner'], x['name']) for x in cfg['projects'] ]
-    except (IOError,):
-        print """
-# Configure your account and projects and 
-# save in your HOME directory as `~/.ghtix.json` 
-
-{
-    "username": "myusername",
-    "password": "mysupersecretpassword",
-    "projects": [
-      {"owner": "ecotrust", "name": "bioregion-discovery"},
-      {"owner": "perrygeo", "name": "ghtix"}
-    ]
-}
-"""
-        sys.exit()
-
-    c = client.Client(username=username, password=password)
+        url = "https://api.github.com/orgs/%s/repos?page=1&per_page=100" % args[0]
+    except IndexError:
+        parser.print_help()
+        sys.exit(1)
 
     issues = []
     proj_width = 0
 
+    jsontxt = urllib.urlopen(url).read()
+    repos = json.loads(jsontxt)
+    for repo in [x for x in repos if x['has_issues'] and x['open_issues'] > 0]:
+        rname = repo['name']
+        url = "https://api.github.com/repos/%s/%s/issues" % (args[0], rname)
+        jsontxt = urllib.urlopen(url).read()
+        project_issues = json.loads(jsontxt)
     
-    for owner, project in projects:
-        msg("fetching %s tickets..." % project, opts)
-        if len(project) > proj_width:
-            proj_width = len(project)
-        repo = client.Repo(c, owner, project)
-        project_issues = repo.issues()
-        empty = True
         for i in project_issues:
-            if i['assignee'] and \
-            i['assignee']['login'] == username and \
-            i['state'] != 'closed':
+            if i['assignee'] and i['state'] != 'closed':
                 empty = False
-                i['project'] = project
-                i['empty'] = False
+                i['project'] = rname
+                i['empty'] = empty
                 try:
                     due = i['milestone']['due_on']
                     if due:
@@ -94,7 +75,7 @@ def main():
                     
                 issues.append(i)
         if empty:
-            issues.append( { 'project': project, 
+            issues.append( { 'project': rname, 
                 'empty': True, 
                 'due_sortable': farfaraway
                 }
@@ -114,6 +95,7 @@ def main():
             continue
 
         title = i['title']
+        assignee = i['assignee']['login']
         number = i['number']
         project = i['project']
         if len(project) > 17:
@@ -150,7 +132,7 @@ def main():
             except: 
                 duedate = ""
                 
-            print "%s %s %s%s #%d %s" % (project.ljust(18), 
+            print "%s %s %s %s%s #%d %s" % (project.ljust(18), assignee.ljust(10),
                     duedate.rjust(10), mtitle.ljust(20), est_time_str.rjust(8), number, title)
 
 if __name__ == '__main__':
