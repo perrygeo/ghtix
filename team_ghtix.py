@@ -232,7 +232,6 @@ if __name__ == '__main__':
                    'growth-yield-batch', 'madrona', 'bioregion-discovery']
 
     try:
-        raise Exception
         projects = get_projects_overview(org, name_filter)
         with open('ksdev/ksdev.json', 'w') as kfh:
             kfh.write(json.dumps(projects, indent=2))
