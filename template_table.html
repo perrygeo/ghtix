@@ -1,0 +1,54 @@
+<html>
+<head>
+    <title>So much good stuff</title>
+       <script src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+       <script src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+       <link href="http://netdna.bootstrapcdn.com/bootswatch/2.3.0/cosmo/bootstrap.min.css" rel="stylesheet">
+       <link rel="stylesheet" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css" />
+        <style>
+            body { padding: 80px; }
+        </style>
+        <script>
+
+            $(document).ready(function() {
+                $('table#ksdev').dataTable( {
+                    "bLengthChange": false,
+                    "bFilter": false,
+                    "bInfo": true,
+                    "bAutoWidth": false,
+                    "bPaginate": false,
+                    "bScrollCollapse": true,
+                    "aaSorting": [[ 2, "asc" ]]                    
+                });
+            });
+        </script>
+</head>
+<body>
+    <h1> Knowledge Systems </h1>
+    <h2> Software team deadlines </h2>
+    <div class="hero-unit">
+        <table id="ksdev">
+        <thead>
+            <tr>
+                {% for h in header %}
+                <th> 
+                    {{h}}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                {% for item in row %}
+                <td> 
+                    {{item}}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</body>
+</html>

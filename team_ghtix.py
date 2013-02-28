@@ -39,6 +39,8 @@ import requests
 import json
 import re
 import sys
+import dateutil.parser
+from datetime import datetime
 
 repos_url = "https://api.github.com/orgs/%s/repos"
 issues_url = "https://api.github.com/repos/%s/issues?state=open"
@@ -65,7 +67,6 @@ def get_projects_overview(org, name_filter=None):
 
     projects = []
     for repo in repos:
-        sys.exit()
         if not name_filter or repo['name'] in name_filter:
             project = {'name': repo['name']}
             sys.stderr.write("------ %s" % repo['name'])
@@ -127,22 +128,100 @@ def get_projects_overview(org, name_filter=None):
             projects.append(project)
     return projects
 
+def get_weeks_diff(ts):
+    dt = dateutil.parser.parse(ts)
+    future = dt.replace(tzinfo=None)
+    now = datetime.now()
+    diff = future - now
+    return diff.days / 7.0
+
+def get_nice_date(ts):
+    dt = dateutil.parser.parse(ts)
+    date = dt.replace(tzinfo=None)
+    return date.strftime('%h %d %Y')
+
+
+def flatten_projects(projects):
+    """
+    Creates a flat table structure out of the data
+    """
+    # get a list of all developers
+    devs = []
+    devs_mod = []
+    for project in projects:
+        for milestone in project['milestones']:
+            for dev in milestone['hours'].keys():
+                if dev not in devs:
+                    devs.append(dev)
+                    devs_mod.append(dev.replace("atecotrustdotorg",""))
+
+    header = ["project", "milestone", "due", "devweeks", "weeks", "devload"]
+    header.extend(devs_mod)
+    datarray = []
+
+    datarray.append(header)
+
+    for project in projects:
+        p = project['name']
+        for milestone in project['milestones']:
+            m = milestone['name']
+            due = milestone['due']
+            if due:
+                d = get_nice_date(due)  #due.split("T")[0]
+            else:
+                d = "Dec 31 2999"  # the distant future
+            ts = [0] * len(devs)
+            for dev, hours in milestone['hours'].items():
+                ts[devs.index(dev)] = hours
+            row = [p, m, d]
+
+            devweeks = sum(ts) / 40.0
+            row.append("%.1f" % devweeks)
+
+            try:
+                weeks = get_weeks_diff(due) 
+            except AttributeError:
+                weeks = -999
+
+            if weeks <= 0:
+                row.append("")
+                row.append("")
+            else:
+                devload = devweeks/weeks
+                row.append("%.1f" % weeks)
+                row.append("%.2f" % devload)
+
+            row.extend(ts)
+            datarray.append(row)
+
+    for row in datarray:
+        print "\t".join([str(x) for x in row])
+    return datarray
+
+
 if __name__ == '__main__':
     org = "Ecotrust"
-    name_filter = ['land_owner_tools', 'madrona-priorities', 'growth-yield-batch', 'madrona']
+    name_filter = ['land_owner_tools', 'madrona-priorities', 'growth-yield-batch', 'madrona', 'bioregion-discovery']
 
+    projects = get_projects_overview(org, name_filter)
     try:
-        projects = get_projects_overview(org, name_filter)
-        with open('ksdev.json','w') as kfh:
+        with open('output/ksdev.json','w') as kfh:
             kfh.write(json.dumps(projects, indent=2))
     except:
+        print "WARNING: using cached json since our request didn't go through"
         with open('ksdev.json','r') as fh:
             projects = json.loads(fh.read())
 
-    with open('ksdev.html','w') as htmlfh:
-        from jinja2 import Environment, FileSystemLoader
-        env = Environment(loader=FileSystemLoader('.'))
+    from jinja2 import Environment, FileSystemLoader
+    env = Environment(loader=FileSystemLoader('.'))
+
+    with open('output/ksdev.html','w') as htmlfh:
         template = env.get_template('template.html')
         htmlfh.write(template.render(projects=projects))
+
+    project_table = flatten_projects(projects) 
+    with open('output/ksdev_table.html','w') as htmlfh:
+        template = env.get_template('template_table.html')
+        htmlfh.write(template.render(header=project_table[0], rows=project_table[1:]))
 
 
