@@ -1,139 +1,127 @@
 #!/usr/bin/env python
-import os
-import sys
-import optparse
+"""
+Github Organization Summary 
+Simple script to summarize github issues across projects
+
+Currently, the estimated time for each issue is either assumed to be 8 hours
+or you can put the time in brackets in the title:
+
+    `Update this app to do something cool [6 hours]`
+
+Requirements: pip install requests  
+
+See the __main__ block for usage.
+
+Example output:
+[
+  {
+    "milestones": {
+      "Juniper Beta": {
+        "hours": {
+          "perrygeo": 24,
+          "unassigned": 8
+        },
+        "due": "2013-03-31T07:00:00Z"
+      },
+      "USFW 2.0 alpha": {
+        "hours": {
+          "perrygeo": 56
+        },
+        "due": "2013-04-30T07:00:00Z"
+      }
+    },
+    "name": "madrona-priorities"
+  },
+  ....
+]
+"""
+import requests
 import json
-import dateutil.parser
-import datetime
-import pytz
-from github_apiv3 import client
-from operator import itemgetter
 import re
-import urllib
+import sys
 
-def msg(txt, opts):
-    if not opts.quiet:
-        sys.stderr.write(txt + "\n")
+repos_url = "https://api.github.com/orgs/%s/repos"
+issues_url = "https://api.github.com/repos/%s/issues?state=open"
 
-def main():
-    utc = pytz.UTC
-    farfaraway = datetime.datetime(3000,1,15,8,15,12,0, utc)
+convert_to_hours = {
+    'hours': 1,
+    'hour': 1,
+    'hrs': 1,
+    'hr': 1,
+    'days': 8,
+    'day': 8,
+    'week': 40,
+    'weeks': 40,
+    'wk': 40,
+    'wks': 40,
+}
 
-    parser = optparse.OptionParser(
-            usage="ghtix.py [options]")
-    parser.add_option("-p", help="Sort by project name (default)", 
-            action="store_true", dest="byproject", default=True)
-    parser.add_option("-t", help="Sort by time / due date",
-            action="store_false", dest="byproject", default=True)
-    parser.add_option("-d", help="Output remaining days instead of due date",
-            action="store_true", dest="usedays", default=False)
-    parser.add_option("-a", help="Include ALL issues even without milestone or due date",
-            action="store_true", dest="allissues", default=False)
-    parser.add_option("-e", help="Show empty projects without any issues assigned",
-            action="store_true", dest="showempty", default=False)
-    parser.add_option("-q", help="Quiet - no stderr messages, only issues list",
-            action="store_true", dest="quiet", default=False)
-    (opts, args) = parser.parse_args()
-    parser.usage = "ghtix_org.py [options] organization"
 
-    p = re.compile("(Time: )([\d]+)( hr)")
+def get_projects_overview(org, name_filter=None):
+    r = requests.get(repos_url % org)
+    repos = r.json()
+    projects = []
+    for repo in repos:
+        if not name_filter or repo['name'] in name_filter:
+            project = {'name': repo['name']}
+            sys.stderr.write("------ %s" % repo['name'])
+            sys.stderr.write("\n")
 
-    try:
-        url = "https://api.github.com/orgs/%s/repos?page=1&per_page=100" % args[0]
-    except IndexError:
-        parser.print_help()
-        sys.exit(1)
+            url = issues_url % repo['full_name']
+            res = requests.get(url)
+            issues = res.json()
 
-    issues = []
-    proj_width = 0
+            page = 1
+            while "next" in res.headers['link']:
+                page += 1
+                paged_url = url + "&page=%d" % page
+                res = requests.get(paged_url)
+                issues.extend(res.json())
 
-    jsontxt = urllib.urlopen(url).read()
-    repos = json.loads(jsontxt)
-    for repo in [x for x in repos if x['has_issues'] and x['open_issues'] > 0]:
-        rname = repo['name']
-        url = "https://api.github.com/repos/%s/%s/issues" % (args[0], rname)
-        jsontxt = urllib.urlopen(url).read()
-        project_issues = json.loads(jsontxt)
-    
-        for i in project_issues:
-            if i['assignee'] and i['state'] != 'closed':
-                empty = False
-                i['project'] = rname
-                i['empty'] = empty
-                try:
-                    due = i['milestone']['due_on']
-                    if due:
-                        dt = dateutil.parser.parse(due)
-                        # d.tzinfo is not None but d.tzinfo.utcoffset(d) returns None
-                        if dt.tzinfo is None:
-                            dt = utc.localize(dt)
-                        i['due_sortable'] = dt
+            print len(issues)
+            milestones = {}
+            for issue in issues:
+                m = issue['milestone']
+                if m:
+                    if m['title'] not in milestones.keys():
+                        milestones[m['title']] = {'due': m['due_on'], 'hours': {}, 'tasks': {}}
+
+                    assignee = issue['assignee']
+                    try:
+                        assignee_login = assignee['login']
+                    except (KeyError, TypeError):
+                        assignee_login = "unassigned"
+
+                    # [1hr] or [ 8 weeks ] but not [8.2 days] and not [8 weeks approx]
+                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]") 
+                    r = regex.search(issue['title'])
+                    if r:
+                        val, units = r.groups()
+                        val = int(val)
                     else:
-                        i['due_sortable'] = farfaraway
-                except TypeError:
-                    i['due_sortable'] = farfaraway
-                    
-                issues.append(i)
-        if empty:
-            issues.append( { 'project': rname, 
-                'empty': True, 
-                'due_sortable': farfaraway
-                }
-            )
+                        sys.stderr.write("Warning:: assuming `%s` takes 8 hours. If not, add time to the title (like '[3 days]')" % issue['title'])
+                        sys.stderr.write("\n")
+                        val = 8
+                        units = "hours"
 
-    if opts.byproject:
-        # sort by project name
-        issues = sorted(issues, key=itemgetter('project')) 
-    else:
-        # sort by due date 
-        issues = sorted(issues, key=itemgetter('due_sortable')) 
-    
-    for i in issues:
-        if i['empty']:
-            if opts.showempty:
-                print i['project'].ljust(proj_width), "---------- None"
-            continue
+                    hours = val * convert_to_hours[units]
+                    issue_desc = {'title': issue['title'], "url": issue['html_url'], "number": issue['number']}
 
-        title = i['title']
-        assignee = i['assignee']['login']
-        number = i['number']
-        project = i['project']
-        if len(project) > 17:
-            project = project[:15] + ".."
-        project = "%s " % project 
-
-        # find estimated time from tags like "Time: 120 hr"
-        est_time = None
-        est_time_str = ""
-        for lbl in i['labels']:
-            lname = lbl['name']
-            match = p.findall(lname)
-            if len(match) > 0 and len(match[0]) == 3:
-                est_time = match[0][1]
-                est_time_str = "%s hrs" % est_time
-
-        if i['milestone'] or opts.allissues:
-            try:
-                mtitle = i['milestone']['title']
-                if len(mtitle) > 17:
-                    mtitle = mtitle[:15] + ".."
-                mtitle = "(%s) " % mtitle
-
-            except:
-                mtitle = ""
-
-            try:
-                mdue = dateutil.parser.parse(i['milestone']['due_on'])
-                if opts.usedays:
-                    togo = mdue - datetime.datetime.now(utc)
-                    duedate = "%d days" % togo.days
+                    if assignee_login in milestones[m['title']]['hours']:
+                        milestones[m['title']]['tasks'][assignee_login].append(issue_desc)
+                        milestones[m['title']]['hours'][assignee_login] += hours
+                    else:
+                        milestones[m['title']]['tasks'][assignee_login] = [issue_desc]
+                        milestones[m['title']]['hours'][assignee_login] = hours
                 else:
-                    duedate = "%d-%d-%d" % (mdue.month, mdue.day, mdue.year)
-            except: 
-                duedate = ""
-                
-            print "%s %s %s %s%s #%d %s" % (project.ljust(18), assignee.ljust(10),
-                    duedate.rjust(10), mtitle.ljust(20), est_time_str.rjust(8), number, title)
+                    sys.stderr.write("No milestone for issue `%s`" % issue['title'])
+                    sys.stderr.write("\n")
+            project['milestones'] = milestones
+            projects.append(project)
+    return projects
 
 if __name__ == '__main__':
-    main()
+    org = "Ecotrust"
+    name_filter = ['land_owner_tools', ] #'madrona-priorities', 'growth-yield-batch']
+    projects = get_projects_overview(org, name_filter)
+    print json.dumps(projects, indent=2)
