@@ -1,0 +1,25 @@
+<html>
+<head>
+    <title>So much good stuff</title>
+</head>
+<body>
+    {% for project in projects %}
+    <div id="{{ project.name }}">
+        <h1> {{ project.name }}</h1>
+        <ul> 
+            {% for milestone in project.milestones %}
+            <li>  
+                <h3>{{ milestone.name }}</h3>
+                <span> Due  {{ milestone.due }} </span>
+                <ul> 
+                    {% for dev, hours in milestone.hours.items() %}
+                    <li>  {{dev}} :: {{ hours }} </li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+</body>
+</html>

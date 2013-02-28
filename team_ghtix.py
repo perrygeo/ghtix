@@ -60,8 +60,12 @@ convert_to_hours = {
 def get_projects_overview(org, name_filter=None):
     r = requests.get(repos_url % org)
     repos = r.json()
+    if r.status_code > 299:
+        raise Exception("Request failed with status code: %d. \n\n %r" % (r.status_code, r.headers))
+
     projects = []
     for repo in repos:
+        sys.exit()
         if not name_filter or repo['name'] in name_filter:
             project = {'name': repo['name']}
             sys.stderr.write("------ %s" % repo['name'])
@@ -71,20 +75,23 @@ def get_projects_overview(org, name_filter=None):
             res = requests.get(url)
             issues = res.json()
 
-            page = 1
-            while "next" in res.headers['link']:
-                page += 1
-                paged_url = url + "&page=%d" % page
-                res = requests.get(paged_url)
-                issues.extend(res.json())
+            if res.headers['link']:
+                page = 1
+                while "next" in res.headers['link']:
+                    page += 1
+                    paged_url = url + "&page=%d" % page
+                    res = requests.get(paged_url)
+                    issues.extend(res.json())
 
-            print len(issues)
-            milestones = {}
+            milestones = []
             for issue in issues:
                 m = issue['milestone']
                 if m:
-                    if m['title'] not in milestones.keys():
-                        milestones[m['title']] = {'due': m['due_on'], 'hours': {}, 'tasks': {}}
+                    if m['title'] not in [x['name'] for x in milestones]:
+                        milestone = {'name': m['title'], 'due': m['due_on'], 'hours': {}, 'tasks': {}}
+                        milestones.append(milestone)
+                    else: 
+                        milestone = [x for x in milestones if x['name'] == m['title']][0]
 
                     assignee = issue['assignee']
                     try:
@@ -107,12 +114,12 @@ def get_projects_overview(org, name_filter=None):
                     hours = val * convert_to_hours[units]
                     issue_desc = {'title': issue['title'], "url": issue['html_url'], "number": issue['number']}
 
-                    if assignee_login in milestones[m['title']]['hours']:
-                        milestones[m['title']]['tasks'][assignee_login].append(issue_desc)
-                        milestones[m['title']]['hours'][assignee_login] += hours
+                    if assignee_login in milestone['hours']:
+                        milestone['tasks'][assignee_login].append(issue_desc)
+                        milestone['hours'][assignee_login] += hours
                     else:
-                        milestones[m['title']]['tasks'][assignee_login] = [issue_desc]
-                        milestones[m['title']]['hours'][assignee_login] = hours
+                        milestone['tasks'][assignee_login] = [issue_desc]
+                        milestone['hours'][assignee_login] = hours
                 else:
                     sys.stderr.write("No milestone for issue `%s`" % issue['title'])
                     sys.stderr.write("\n")
@@ -122,6 +129,20 @@ def get_projects_overview(org, name_filter=None):
 
 if __name__ == '__main__':
     org = "Ecotrust"
-    name_filter = ['land_owner_tools', ] #'madrona-priorities', 'growth-yield-batch']
-    projects = get_projects_overview(org, name_filter)
-    print json.dumps(projects, indent=2)
+    name_filter = ['land_owner_tools', 'madrona-priorities', 'growth-yield-batch', 'madrona']
+
+    try:
+        projects = get_projects_overview(org, name_filter)
+        with open('ksdev.json','w') as kfh:
+            kfh.write(json.dumps(projects, indent=2))
+    except:
+        with open('ksdev.json','r') as fh:
+            projects = json.loads(fh.read())
+
+    with open('ksdev.html','w') as htmlfh:
+        from jinja2 import Environment, FileSystemLoader
+        env = Environment(loader=FileSystemLoader('.'))
+        template = env.get_template('template.html')
+        htmlfh.write(template.render(projects=projects))
+
+
