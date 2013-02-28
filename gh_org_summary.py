@@ -1,3 +1,35 @@
+#!/usr/bin/env python
+"""
+Github Organization Summary 
+Simple script to summarize github issues across projects
+
+Requirements: pip install requests  
+
+See the __main__ block for usage.
+
+Example output:
+[
+  {
+    "milestones": {
+      "Juniper Beta": {
+        "hours": {
+          "perrygeo": 24,
+          "unassigned": 8
+        },
+        "due": "2013-03-31T07:00:00Z"
+      },
+      "USFW 2.0 alpha": {
+        "hours": {
+          "perrygeo": 56
+        },
+        "due": "2013-04-30T07:00:00Z"
+      }
+    },
+    "name": "madrona-priorities"
+  },
+  ....
+]
+"""
 import requests
 import json
 import re
