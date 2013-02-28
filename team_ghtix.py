@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Github Organization Summary 
+Github Organization Summary
 Simple script to summarize github issues across projects
 
 Currently, the estimated time for each issue is either assumed to be 8 hours
@@ -8,7 +8,7 @@ or you can put the time in brackets in the title:
 
     `Update this app to do something cool [6 hours]`
 
-Requirements: pip install requests  
+Requirements: pip install requests
 
 See the __main__ block for usage.
 
@@ -63,7 +63,8 @@ def get_projects_overview(org, name_filter=None):
     r = requests.get(repos_url % org)
     repos = r.json()
     if r.status_code > 299:
-        raise Exception("Request failed with status code: %d. \n\n %r" % (r.status_code, r.headers))
+        raise Exception("Request failed with status code: %d. \n\n %r" % (
+            r.status_code, r.headers))
 
     projects = []
     for repo in repos:
@@ -89,10 +90,12 @@ def get_projects_overview(org, name_filter=None):
                 m = issue['milestone']
                 if m:
                     if m['title'] not in [x['name'] for x in milestones]:
-                        milestone = {'name': m['title'], 'due': m['due_on'], 'hours': {}, 'tasks': {}}
+                        milestone = {'name': m['title'],
+                                     'due': m['due_on'], 'hours': {}, 'tasks': {}}
                         milestones.append(milestone)
-                    else: 
-                        milestone = [x for x in milestones if x['name'] == m['title']][0]
+                    else:
+                        milestone = [
+                            x for x in milestones if x['name'] == m['title']][0]
 
                     assignee = issue['assignee']
                     try:
@@ -101,7 +104,7 @@ def get_projects_overview(org, name_filter=None):
                         assignee_login = "unassigned"
 
                     # [1hr] or [ 8 weeks ] but not [8.2 days] and not [8 weeks approx]
-                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]") 
+                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]")
                     r = regex.search(issue['title'])
                     if r:
                         val, units = r.groups()
@@ -113,7 +116,8 @@ def get_projects_overview(org, name_filter=None):
                         units = "hours"
 
                     hours = val * convert_to_hours[units]
-                    issue_desc = {'title': issue['title'], "url": issue['html_url'], "number": issue['number']}
+                    issue_desc = {'title': issue['title'], "url":
+                                  issue['html_url'], "number": issue['number']}
 
                     if assignee_login in milestone['hours']:
                         milestone['tasks'][assignee_login].append(issue_desc)
@@ -122,11 +126,13 @@ def get_projects_overview(org, name_filter=None):
                         milestone['tasks'][assignee_login] = [issue_desc]
                         milestone['hours'][assignee_login] = hours
                 else:
-                    sys.stderr.write("No milestone for issue `%s`" % issue['title'])
+                    sys.stderr.write(
+                        "No milestone for issue `%s`" % issue['title'])
                     sys.stderr.write("\n")
             project['milestones'] = milestones
             projects.append(project)
     return projects
+
 
 def get_weeks_diff(ts):
     dt = dateutil.parser.parse(ts)
@@ -135,10 +141,11 @@ def get_weeks_diff(ts):
     diff = future - now
     return diff.days / 7.0
 
+
 def get_nice_date(ts):
     dt = dateutil.parser.parse(ts)
     date = dt.replace(tzinfo=None)
-    return date.strftime('%h %d %Y')
+    return date.strftime("%B %d %Y")
 
 
 def flatten_projects(projects):
@@ -153,13 +160,16 @@ def flatten_projects(projects):
             for dev in milestone['hours'].keys():
                 if dev not in devs:
                     devs.append(dev)
-                    devs_mod.append(dev.replace("atecotrustdotorg",""))
+                    devs_mod.append(dev.replace("atecotrustdotorg", ""))
 
-    header = ["project", "milestone", "due", "devweeks", "weeks", "devload"]
+    devs_mod = [x + " (wks)" for x in devs_mod]
+    header = ["project", "milestone", "due", "devweeks",
+              "cumul. devweeks", "weeks away", "devload", "cumul. devload"]
     header.extend(devs_mod)
-    datarray = []
+    print "\t".join([str(x) for x in header])
 
-    datarray.append(header)
+    datarray = []
+    # datarray.append(header)
 
     for project in projects:
         p = project['name']
@@ -167,19 +177,20 @@ def flatten_projects(projects):
             m = milestone['name']
             due = milestone['due']
             if due:
-                d = get_nice_date(due)  #due.split("T")[0]
+                d = get_nice_date(due)  # due.split("T")[0]
             else:
                 d = "Dec 31 2999"  # the distant future
             ts = [0] * len(devs)
             for dev, hours in milestone['hours'].items():
-                ts[devs.index(dev)] = hours
+                # convert from hours to weeks 
+                ts[devs.index(dev)] = hours / 40.0
             row = [p, m, d]
 
-            devweeks = sum(ts) / 40.0
+            devweeks = sum(ts)
             row.append("%.1f" % devweeks)
 
             try:
-                weeks = get_weeks_diff(due) 
+                weeks = get_weeks_diff(due)
             except AttributeError:
                 weeks = -999
 
@@ -187,41 +198,57 @@ def flatten_projects(projects):
                 row.append("")
                 row.append("")
             else:
-                devload = devweeks/weeks
+                devload = devweeks / weeks
                 row.append("%.1f" % weeks)
                 row.append("%.2f" % devload)
 
-            row.extend(ts)
+            row.extend([round(t, 1) for t in ts])
             datarray.append(row)
 
-    for row in datarray:
+    data1 = sorted(datarray, key=lambda x: dateutil.parser.parse(x[2]))
+    data = []
+    cdevweeks = 0
+    for d in data1:
+        try:
+            cdevweeks += float(d[3])
+            cdevload = cdevweeks / float(d[4])
+            cdevload = "%.2f" % cdevload
+        except ValueError:
+            cdevload = ''
+
+        d.insert(4, cdevweeks)  # cumulative devweeks
+        d.insert(7, cdevload)  # cumulative devload
+        data.append(d)
+
+    for row in data:
         print "\t".join([str(x) for x in row])
-    return datarray
+
+    return header, data
 
 
 if __name__ == '__main__':
     org = "Ecotrust"
-    name_filter = ['land_owner_tools', 'madrona-priorities', 'growth-yield-batch', 'madrona', 'bioregion-discovery']
+    name_filter = ['land_owner_tools', 'madrona-priorities',
+                   'growth-yield-batch', 'madrona', 'bioregion-discovery']
 
-    projects = get_projects_overview(org, name_filter)
     try:
-        with open('output/ksdev.json','w') as kfh:
+        raise Exception
+        projects = get_projects_overview(org, name_filter)
+        with open('ksdev/ksdev.json', 'w') as kfh:
             kfh.write(json.dumps(projects, indent=2))
     except:
         print "WARNING: using cached json since our request didn't go through"
-        with open('ksdev.json','r') as fh:
+        with open('ksdev/ksdev.json', 'r') as fh:
             projects = json.loads(fh.read())
 
     from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader('.'))
 
-    with open('output/ksdev.html','w') as htmlfh:
+    with open('ksdev/ksdev.html', 'w') as htmlfh:
         template = env.get_template('template.html')
         htmlfh.write(template.render(projects=projects))
 
-    project_table = flatten_projects(projects) 
-    with open('output/ksdev_table.html','w') as htmlfh:
+    header, data = flatten_projects(projects)
+    with open('ksdev/index.html', 'w') as htmlfh:
         template = env.get_template('template_table.html')
-        htmlfh.write(template.render(header=project_table[0], rows=project_table[1:]))
-
-
+        htmlfh.write(template.render(header=header, rows=data))
