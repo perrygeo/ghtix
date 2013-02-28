@@ -3,6 +3,11 @@
 Github Organization Summary 
 Simple script to summarize github issues across projects
 
+Currently, the estimated time for each issue is either assumed to be 8 hours
+or you can put the time in brackets in the title:
+
+    `Update this app to do something cool [6 hours]`
+
 Requirements: pip install requests  
 
 See the __main__ block for usage.
