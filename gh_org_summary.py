@@ -82,8 +82,6 @@ def get_projects_overview(org, name_filter=None):
             milestones = {}
             for issue in issues:
                 m = issue['milestone']
-                if "Server" in issue['title']:
-                    print "#####################################################################"
                 if m:
                     if m['title'] not in milestones.keys():
                         milestones[m['title']] = {'due': m['due_on'], 'hours': {}, 'tasks': {}}
@@ -94,7 +92,8 @@ def get_projects_overview(org, name_filter=None):
                     except (KeyError, TypeError):
                         assignee_login = "unassigned"
 
-                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]")  # [1hr] or [ 8 weeks ] but not [8.2 days] and not [8 weeks approx]
+                    # [1hr] or [ 8 weeks ] but not [8.2 days] and not [8 weeks approx]
+                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]") 
                     r = regex.search(issue['title'])
                     if r:
                         val, units = r.groups()
@@ -106,15 +105,17 @@ def get_projects_overview(org, name_filter=None):
                         units = "hours"
 
                     hours = val * convert_to_hours[units]
+                    issue_desc = {'title': issue['title'], "url": issue['html_url'], "number": issue['number']}
 
                     if assignee_login in milestones[m['title']]['hours']:
-                        milestones[m['title']]['tasks'][assignee_login] += 1
+                        milestones[m['title']]['tasks'][assignee_login].append(issue_desc)
                         milestones[m['title']]['hours'][assignee_login] += hours
                     else:
-                        milestones[m['title']]['tasks'][assignee_login] = 1
+                        milestones[m['title']]['tasks'][assignee_login] = [issue_desc]
                         milestones[m['title']]['hours'][assignee_login] = hours
                 else:
-                    print "NO MILESTONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                    sys.stderr.write("No milestone for issue `%s`" % issue['title'])
+                    sys.stderr.write("\n")
             project['milestones'] = milestones
             projects.append(project)
     return projects
