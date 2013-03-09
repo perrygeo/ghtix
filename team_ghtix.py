@@ -182,7 +182,7 @@ def flatten_projects(projects):
                 d = "Dec 31 2999"  # the distant future
             ts = [0] * len(devs)
             for dev, hours in milestone['hours'].items():
-                # convert from hours to weeks 
+                # convert from hours to weeks
                 ts[devs.index(dev)] = hours / 40.0
             row = [p, m, d]
 
@@ -228,8 +228,7 @@ def flatten_projects(projects):
 
 if __name__ == '__main__':
     org = "Ecotrust"
-    name_filter = ['land_owner_tools', 'madrona-priorities',
-                   'growth-yield-batch', 'madrona', 'bioregion-discovery']
+    name_filter = ['land_owner_tools', 'growth-yield-batch', 'madrona-priorities', 'madrona', 'locus']
 
     try:
         projects = get_projects_overview(org, name_filter)
@@ -245,9 +244,9 @@ if __name__ == '__main__':
 
     with open('ksdev/ksdev.html', 'w') as htmlfh:
         template = env.get_template('template.html')
-        htmlfh.write(template.render(projects=projects))
+        htmlfh.write(template.render(projects=projects, now=datetime.now()))
 
     header, data = flatten_projects(projects)
     with open('ksdev/index.html', 'w') as htmlfh:
         template = env.get_template('template_table.html')
-        htmlfh.write(template.render(header=header, rows=data))
+        htmlfh.write(template.render(header=header, rows=data, now=datetime.now()))
