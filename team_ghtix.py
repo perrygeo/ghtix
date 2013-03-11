@@ -164,7 +164,7 @@ def flatten_projects(projects):
 
     devs_mod = [x + " (wks)" for x in devs_mod]
     header = ["project", "milestone", "due", "devweeks",
-              "cumul. devweeks", "weeks away", "devload", "cumul. devload"]
+              "cumul. devweeks", "weeks away", "project FTE", "cumul. FTE"]
     header.extend(devs_mod)
     print "\t".join([str(x) for x in header])
 
