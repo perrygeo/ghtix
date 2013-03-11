@@ -42,7 +42,7 @@ import sys
 import dateutil.parser
 from datetime import datetime
 
-repos_url = "https://api.github.com/orgs/%s/repos"
+repos_url = "https://api.github.com/orgs/%s/repos?per_page=100"  # max 100 repos
 issues_url = "https://api.github.com/repos/%s/issues?state=open"
 
 convert_to_hours = {
@@ -230,14 +230,14 @@ if __name__ == '__main__':
     org = "Ecotrust"
     name_filter = ['land_owner_tools', 'growth-yield-batch', 'madrona-priorities', 'madrona', 'locus']
 
-    try:
-        projects = get_projects_overview(org, name_filter)
-        with open('ksdev/ksdev.json', 'w') as kfh:
-            kfh.write(json.dumps(projects, indent=2))
-    except:
-        print "WARNING: using cached json since our request didn't go through"
-        with open('ksdev/ksdev.json', 'r') as fh:
-            projects = json.loads(fh.read())
+    #try:
+    projects = get_projects_overview(org, name_filter)
+    with open('ksdev/ksdev.json', 'w') as kfh:
+        kfh.write(json.dumps(projects, indent=2))
+    #except:
+    #    print "WARNING: using cached json since our request didn't go through"
+    #    with open('ksdev/ksdev.json', 'r') as fh:
+    #        projects = json.loads(fh.read())
 
     from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader('.'))
