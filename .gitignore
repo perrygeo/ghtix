@@ -5,3 +5,5 @@ data.pkl
 build/*
 dist/*
 ksdev/*
+*.sqlite
+go.sh

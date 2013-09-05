@@ -41,22 +41,13 @@ import re
 import sys
 import dateutil.parser
 from datetime import datetime
+from utils import parse_hours_from_title
+import requests_cache
+
+requests_cache.install_cache('ghtix_cache', backend='sqlite', expire_after=900) # 15 min
 
 repos_url = "https://api.github.com/orgs/%s/repos?per_page=100"  # max 100 repos
 issues_url = "https://api.github.com/repos/%s/issues?state=open"
-
-convert_to_hours = {
-    'hours': 1,
-    'hour': 1,
-    'hrs': 1,
-    'hr': 1,
-    'days': 8,
-    'day': 8,
-    'week': 40,
-    'weeks': 40,
-    'wk': 40,
-    'wks': 40,
-}
 
 
 def get_projects_overview(org, name_filter=None):
@@ -77,7 +68,7 @@ def get_projects_overview(org, name_filter=None):
             res = requests.get(url)
             issues = res.json()
 
-            if res.headers['link']:
+            if 'link' in res.headers.keys():
                 page = 1
                 while "next" in res.headers['link']:
                     page += 1
@@ -96,39 +87,35 @@ def get_projects_overview(org, name_filter=None):
                     else:
                         milestone = [
                             x for x in milestones if x['name'] == m['title']][0]
-
-                    assignee = issue['assignee']
-                    try:
-                        assignee_login = assignee['login']
-                    except (KeyError, TypeError):
-                        assignee_login = "unassigned"
-
-                    # [1hr] or [ 8 weeks ] but not [8.2 days] and not [8 weeks approx]
-                    regex = re.compile(".*\[\s*(\d+)\s*(\w+)\s*\]")
-                    r = regex.search(issue['title'])
-                    if r:
-                        val, units = r.groups()
-                        val = int(val)
-                    else:
-                        sys.stderr.write("Warning:: assuming `%s` takes 8 hours. If not, add time to the title (like '[3 days]')" % issue['title'])
-                        sys.stderr.write("\n")
-                        val = 8
-                        units = "hours"
-
-                    hours = val * convert_to_hours[units]
-                    issue_desc = {'title': issue['title'], "url":
-                                  issue['html_url'], "number": issue['number']}
-
-                    if assignee_login in milestone['hours']:
-                        milestone['tasks'][assignee_login].append(issue_desc)
-                        milestone['hours'][assignee_login] += hours
-                    else:
-                        milestone['tasks'][assignee_login] = [issue_desc]
-                        milestone['hours'][assignee_login] = hours
                 else:
-                    sys.stderr.write(
-                        "No milestone for issue `%s`" % issue['title'])
-                    sys.stderr.write("\n")
+                    # Assign a fictional "Future Release" milestone 
+                    future_title = "Future Release"
+                    if future_title not in [x['name'] for x in milestones]:
+                        milestone = {'name': future_title,
+                                     'due': 'Oct 31, 2020', 'hours': {}, 'tasks': {}}
+                        milestones.append(milestone)
+                    else:
+                        milestone = [
+                            x for x in milestones if x['name'] == future_title][0]
+
+                assignee = issue['assignee']
+                try:
+                    assignee_login = assignee['login']
+                except (KeyError, TypeError):
+                    assignee_login = "unassigned"
+
+                hours = parse_hours_from_title(issue['title'])
+
+                issue_desc = {'title': issue['title'], "url":
+                              issue['html_url'], "number": issue['number']}
+
+                if assignee_login in milestone['hours']:
+                    milestone['tasks'][assignee_login].append(issue_desc)
+                    milestone['hours'][assignee_login] += hours
+                else:
+                    milestone['tasks'][assignee_login] = [issue_desc]
+                    milestone['hours'][assignee_login] = hours
+
             project['milestones'] = milestones
             projects.append(project)
     return projects
@@ -164,7 +151,7 @@ def flatten_projects(projects):
 
     devs_mod = [x + " (wks)" for x in devs_mod]
     header = ["project", "milestone", "due", "devweeks",
-              "cumul. devweeks", "weeks away", "project FTE", "cumul. FTE"]
+              "cumul. devweeks", "weeks away", "project load", "cumul. load"]
     header.extend(devs_mod)
     print "\t".join([str(x) for x in header])
 
@@ -228,7 +215,8 @@ def flatten_projects(projects):
 
 if __name__ == '__main__':
     org = "Ecotrust"
-    name_filter = ['land_owner_tools', 'growth-yield-batch', 'madrona-priorities', 'madrona', 'locus']
+    name_filter = ['land_owner_tools', 'growth-yield-batch', 'harvest-scheduler', 
+        'madrona-priorities', 'madrona', 'locus']
 
     #try:
     projects = get_projects_overview(org, name_filter)
