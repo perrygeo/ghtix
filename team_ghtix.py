@@ -77,22 +77,26 @@ def get_projects_overview(org, name_filter=None):
                     issues.extend(res.json())
 
             milestones = []
+
+            from dateutil.relativedelta import relativedelta
+            the_distance_future = get_nice_date(str(datetime.today() + relativedelta(years=10)))
+            future_title = "Future Release"
+
             for issue in issues:
                 m = issue['milestone']
                 if m:
                     if m['title'] not in [x['name'] for x in milestones]:
                         milestone = {'name': m['title'],
-                                     'due': m['due_on'], 'hours': {}, 'tasks': {}}
+                                     'due': get_nice_date(m['due_on']), 'hours': {}, 'tasks': {}}
                         milestones.append(milestone)
                     else:
                         milestone = [
                             x for x in milestones if x['name'] == m['title']][0]
                 else:
                     # Assign a fictional "Future Release" milestone 
-                    future_title = "Future Release"
                     if future_title not in [x['name'] for x in milestones]:
                         milestone = {'name': future_title,
-                                     'due': 'Oct 31, 2020', 'hours': {}, 'tasks': {}}
+                                     'due': the_distance_future, 'hours': {}, 'tasks': {}}
                         milestones.append(milestone)
                     else:
                         milestone = [
@@ -216,7 +220,7 @@ def flatten_projects(projects):
 if __name__ == '__main__':
     org = "Ecotrust"
     name_filter = ['land_owner_tools', 'growth-yield-batch', 'harvest-scheduler', 
-        'madrona-priorities', 'madrona', 'locus']
+        'madrona-priorities', 'madrona', 'locus', 'ak-logbook']
 
     #try:
     projects = get_projects_overview(org, name_filter)
@@ -230,8 +234,8 @@ if __name__ == '__main__':
     from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader('.'))
 
-    with open('ksdev/ksdev.html', 'w') as htmlfh:
-        template = env.get_template('template.html')
+    with open('ksdev/tickets.html', 'w') as htmlfh:
+        template = env.get_template('assigned.html')
         htmlfh.write(template.render(projects=projects, now=datetime.now()))
 
     header, data = flatten_projects(projects)
