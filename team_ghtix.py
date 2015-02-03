@@ -110,8 +110,14 @@ def get_projects_overview(org, name_filter=None):
 
                 hours = parse_hours_from_title(issue['title'])
 
-                issue_desc = {'title': issue['title'], "url":
-                              issue['html_url'], "number": issue['number']}
+                labels =  [(x['color'], x['name']) for x in issue['labels']]
+                issue_desc = {
+                    'title': issue['title'],
+                    'hours': hours,
+                    'labels': labels,
+                    "url": issue['html_url'],
+                    "number": issue['number']
+                }
 
                 if assignee_login in milestone['hours']:
                     milestone['tasks'][assignee_login].append(issue_desc)
@@ -136,7 +142,7 @@ def get_weeks_diff(ts):
 def get_nice_date(ts):
     dt = dateutil.parser.parse(ts)
     date = dt.replace(tzinfo=None)
-    return date.strftime("%B %d %Y")
+    return date.strftime("%b %d %Y")
 
 
 def flatten_projects(projects):

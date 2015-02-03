@@ -35,11 +35,13 @@
       </div>
       <table class="table table-striped table-bordered" id="ksdev">
       <thead>
-        <th> project.name </th>
-        <th> milestone.name </th>
-        <th> milestone.due  </th>
-        <th>dev</th>
-        <th>task.title</th>
+        <th>Project</th>
+        <th>Milestone</th>
+        <th>Due</th>
+        <th>Dev</th>
+        <th>Title</th>
+        <th>Hours</th>
+        <th>Labels</th>
       </thead>
       <tbody>
         {% for project in projects %}
@@ -52,6 +54,12 @@
                         <td>{{ milestone.due }} </td>
                         <td>{{dev}}</td>
                         <td><a href="{{task.url}}">{{task.title}}</a></td>
+                        <td>{{task.hours}}</td>
+                        <td>
+                            {% for color, label in task.labels %}
+                                <span class="badge" style="background-color:#{{color}};">{{label}}</span>
+                            {% endfor %}
+                        </td>
                       </tr>
                     {% endfor %}
                 {% endfor %}
